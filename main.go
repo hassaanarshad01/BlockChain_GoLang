@@ -1,34 +1,34 @@
 package main
 
-//rootfolder name: BlockchainProject
 import (
 	"BlockchainProject/blockchain"
 	"BlockchainProject/p2p"
+	"flag"
 	"fmt"
-	"os"
 )
 
 func main() {
-	
-	//Blockchain initialization
+	//usage via: go run main.go --port=3001
+	// --port sets the port number, same can be done in dockerfile config
+	port := flag.String("port", "3001", "Port to listen on")
+	peer := flag.String("peer", "", "Address of a peer to connect to")
+	flag.Parse()
+
+	//start the peer up
+	go p2p.StartServer(*port)
+
+	//connect to an initial peer if availible.
+	if *peer != "" {
+		p2p.ConnectToPeer(*peer, "REQUEST_CHAIN")
+		p2p.AddPeer(*peer)
+	}
+
 	chain := blockchain.InitBlockchain()
-	
-	//Initialize server port 3000
-	go p2p.StartServer("3000") 
 
-	//Block adding simulation
 	chain.AddBlock("First Block after Genesis Block")
-	chain.AddBlock("Second Block after Genesis Block")
 
-	//sending blockchain to peer
-	if len(os.Args) > 1 && os.Args[1] == "connect" {
-		p2p.ConnectToPeer("localhost:3000", "REQUEST_CHAIN")
-	}
+	//Broadcast block
+	p2p.BroadcastMessage("NEW_BLOCK: First Block after Genesis Block")
 
-	//printing blockchain
-	for _, block := range chain.Blocks {
-		fmt.Printf("Previous Hash: %x\n", block.PrevHash)
-		fmt.Printf("Data: %s\n", block.Data)
-		fmt.Printf("Hash: %x\n\n", block.Hash)
-	}
+	fmt.Println("Blockchain initialized. Listening on port:", *port)
 }
