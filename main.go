@@ -1,5 +1,6 @@
 package main
 
+//rootfolder name: BlockchainProject
 import (
 	"BlockchainProject/blockchain"
 	"BlockchainProject/p2p"
