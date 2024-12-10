@@ -7,38 +7,37 @@ import (
 	"os"
 )
 
-func ConnectToPeer(peerAddress string, message string) {
-	//TCP connection
+func ConnectToPeer(peerAddress string, messageType string, data interface{}) {
 	conn, err := net.Dial("tcp", peerAddress)
 	if err != nil {
 		fmt.Println("Error connecting to peer:", err)
 		return
 	}
+	defer conn.Close()
 
-	fmt.Fprintf(conn, message+"\n")
+	// Serialize and send the message
+	message := Message{Type: messageType, Data: data}
+	messageJSON, err := SerializeMessage(message)
+	if err != nil {
+		fmt.Println("Error serializing message:", err)
+		return
+	}
+	fmt.Fprintf(conn, messageJSON+"\n")
 
-	//goroutine to listen to messages from peer
-	go func() {
-		reader := bufio.NewReader(conn)
-		for {
-			response, err := reader.ReadString('\n')
-			if err != nil {
-				fmt.Println("Connection closed by peer:", err)
-				break
-			}
-			fmt.Println("Response from peer:", response)
-		}
-	}()
-
-	//connection stays open, not closed as it is inefficient otherwise
+	// Listen for responses from the peer
+	reader := bufio.NewReader(conn)
 	for {
-		var input string
-		fmt.Print("Enter message to send to peer: ")
-		_, err := fmt.Scanln(&input)
+		responseJSON, err := reader.ReadString('\n')
 		if err != nil {
-			fmt.Println("Error reading input:", err)
+			fmt.Println("Connection closed by peer:", err)
 			break
 		}
-		fmt.Fprintf(conn, input+"\n")
+
+		response, err := DeserializeMessage(responseJSON)
+		if err != nil {
+			fmt.Println("Error parsing response:", err)
+			continue
+		}
+		fmt.Println("Response from peer:", response)
 	}
 }

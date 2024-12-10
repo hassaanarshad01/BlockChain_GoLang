@@ -34,22 +34,32 @@ func handleConnection(conn net.Conn) {
 	reader := bufio.NewReader(conn)
 
 	for {
-		message, err := reader.ReadString('\n')
+		messageJSON, err := reader.ReadString('\n')
 		if err != nil {
 			fmt.Println("Connection closed by peer:", err)
 			break
 		}
 
-		//process the received message
-		fmt.Println("Message received:", message)
+		message, err := DeserializeMessage(messageJSON)
+		if err != nil {
+			fmt.Println("Error parsing message:", err)
+			continue
+		}
 
-		//example response logic
-		switch message {
-		case "REQUEST_CHAIN\n":
-			conn.Write([]byte("BLOCKCHAIN_DATA\n"))
+		//Handling the message based on it's type, including JSON
+		switch message.Type {
+		case "REQUEST_CHAIN":
+			//Placeholder blockchain data
+			response := Message{Type: "BLOCKCHAIN_DATA", Data: "Genesis Block + First Block"}
+			responseJSON, _ := SerializeMessage(response)
+			conn.Write([]byte(responseJSON + "\n"))
+		case "NEW_BLOCK":
+			fmt.Println("New block received:", message.Data)
+			//process new block
 		default:
-			fmt.Println("Unknown message type")
+			fmt.Println("Unknown message type:", message.Type)
 		}
 	}
 }
+
 

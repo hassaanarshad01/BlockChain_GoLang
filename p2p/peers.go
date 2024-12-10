@@ -30,12 +30,29 @@ func GetPeers() []string {
 	return copyPeers
 }
 
-//broadcasting
-func BroadcastMessage(message string) {
+//broadcasting code changed into JSON communication
+func BroadcastMessage(messageType string, data interface{}) {
 	mu.Lock()
 	defer mu.Unlock()
 
+	message := Message{Type: messageType, Data: data}
+	messageJSON, err := SerializeMessage(message)
+	if err != nil {
+		fmt.Println("Error serializing message:", err)
+		return
+	}
+
 	for _, peer := range peers {
-		go ConnectToPeer(peer, message)
+		go func(peer string) {
+			conn, err := net.Dial("tcp", peer)
+			if err != nil {
+				fmt.Println("Error connecting to peer:", err)
+				return
+			}
+			defer conn.Close()
+
+			fmt.Fprintf(conn, messageJSON+"\n")
+		}(peer)
 	}
 }
+
