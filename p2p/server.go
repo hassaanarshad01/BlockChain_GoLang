@@ -36,13 +36,20 @@ func handleConnection(conn net.Conn) {
 	for {
 		message, err := reader.ReadString('\n')
 		if err != nil {
-			fmt.Println("Connection closed by peer")
+			fmt.Println("Connection closed by peer:", err)
 			break
 		}
+
+		//process the received message
 		fmt.Println("Message received:", message)
 
-		if message == "REQUEST_CHAIN\n" {
+		//example response logic
+		switch message {
+		case "REQUEST_CHAIN\n":
 			conn.Write([]byte("BLOCKCHAIN_DATA\n"))
+		default:
+			fmt.Println("Unknown message type")
 		}
 	}
 }
+
