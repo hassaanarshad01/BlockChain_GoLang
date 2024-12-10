@@ -23,6 +23,7 @@ func main() {
 		p2p.AddPeer(*peer)
 	}
 
+	go p2p.CheckPeerHealth()
 	chain := blockchain.InitBlockchain()
 
 	chain.AddBlock("First Block after Genesis Block")
