@@ -1,64 +1,97 @@
 package blockchain
 
-import "bytes"
-import "crypto/sha256"
+import (
+	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+)
 
-// ================================NOTE================================
-// |  Need to change "Data" to Algo and Dataset Hash storing instead  |
-// ================================NOTE================================
-
-
-// Block structure definition
-type Block struct {
-	Hash     []byte // The hash of the current block
-	Data     []byte // Data stored in the block 			(To change)
-	PrevHash []byte // Hash of the previous block
-	Nonce    int    // Nonce used in proof-of-work
+// ========================Represents a transaction in the blockchain========================
+type Transaction struct {
+	DataHash string // Hash of the dataset stored on IPFS
+	AlgoHash string // Hash of the AI algorithm stored on IPFS
+	Output   string // Expected output of the algorithm
 }
 
-// Blockchain represents the chain of blocks
+// ========================Represents a block in the blockchain========================
+type Block struct {
+	Hash         []byte        // Hash of the block
+	Transactions []Transaction // Transactions stored in the block
+	PrevHash     []byte        // Hash of the previous block
+	Nonce        int           // Nonce used in proof-of-work
+}
+
+// ========================Blockchain========================
 type Blockchain struct {
 	Blocks []*Block // Slice of blocks forming the blockchain
 }
 
-// GetHash calculates and sets the hash for the block
+// ========================Calculates and sets the hash for the block========================
 func (b *Block) GetHash() {
-	// Join block data and previous hash into a single byte slice
-	info := bytes.Join([][]byte{b.Data, b.PrevHash}, []byte{})
+	// Serialize transactions into a single byte slice
+	txData, _ := json.Marshal(b.Transactions)
+
+	// Join transaction data and previous hash
+	info := bytes.Join([][]byte{txData, b.PrevHash}, []byte{})
+
 	// Compute the SHA-256 hash of the joined data
 	hash := sha256.Sum256(info)
+
 	// Store the hash in the block
 	b.Hash = hash[:]
 }
 
-// NewBlock creates a new block with the given data and the previous block's hash
-func NewBlock(data string, prevhash []byte) *Block {
-	// Initialize a new block with the provided data and previous hash
-	block := &Block{[]byte{}, []byte(data), prevhash, 0}
-	// Create a proof-of-work instance for the new block
+// ========================Creates a new block========================
+func NewBlock(transactions []Transaction, prevhash []byte) *Block {
+	block := &Block{[]byte{}, transactions, prevhash, 0}
 	pow := NewProof(block)
-	// Perform the proof-of-work to find a valid nonce and hash
-	nonce, hash := pow.GetHash()
-	// Set the block's hash and nonce
+	nonce, hash := pow.getHash()
+
 	block.Hash = hash[:]
 	block.Nonce = nonce
 
-	// Return the newly created block
 	return block
 }
 
-// InitBlockchain initializes the blockchain with a genesis block
+// ========================Initializes the blockchain with a genesis block========================
 func InitBlockchain() *Blockchain {
-	// Create a new blockchain and start with a "Genesis" block
-	return &Blockchain{[]*Block{NewBlock("Genesis", []byte{})}}
+	// Transaction stored in the Genesis Block
+	genesisTx := []Transaction{
+		{DataHash: "GenesisDataHash", AlgoHash: "GenesisAlgoHash", Output: "GenesisOutput"},
+	}
+
+	return &Blockchain{[]*Block{NewBlock(genesisTx, []byte{})}}
 }
 
-// AddBlock adds a new block with the provided data to the blockchain
-func (chain *Blockchain) AddBlock(data string) {
-	// Retrieve the last block in the chain
+// ========================Adds a new block to the blockchain========================
+func (chain *Blockchain) AddBlock(transactions []Transaction) {
 	prevB := chain.Blocks[len(chain.Blocks)-1]
-	// Create a new block with the given data and the previous block's hash
-	newB := NewBlock(data, prevB.Hash)
-	// Append the new block to the blockchain
+	newB := NewBlock(transactions, prevB.Hash)
 	chain.Blocks = append(chain.Blocks, newB)
+}
+
+// ========================Get the latest block========================
+func (chain *Blockchain) GetLatestBlock() *Block {
+	return chain.Blocks[len(chain.Blocks)-1]
+}
+
+// ========================Add a block to the chain========================
+func (chain *Blockchain) AddBlockToChain(block *Block) {
+	chain.Blocks = append(chain.Blocks, block)
+}
+
+// ========================Simple deterministic algorithm========================
+func DeterministicAlgorithm(data string) string {
+	var result byte
+	for _, b := range []byte(data) {
+		result ^= b
+	}
+	return hex.EncodeToString([]byte{result})
+}
+
+// ========================Hash data using SHA-256========================
+func HashData(data string) string {
+	hash := sha256.Sum256([]byte(data))
+	return hex.EncodeToString(hash[:])
 }
