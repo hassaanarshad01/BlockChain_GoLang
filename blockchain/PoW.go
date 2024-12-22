@@ -1,6 +1,15 @@
 package blockchain
 
-import "math/big"
+import (
+    "bytes"
+    "crypto/sha256"
+    "encoding/binary"
+    "fmt"
+    "log"
+    "math"
+    "math/big"
+	"encoding/json"
+)
 
 // PoW represents the Proof-of-Work structure
 type PoW struct {
@@ -41,17 +50,20 @@ func ToBytes(num int64) []byte {
 
 // Init prepares the data to be hashed with the given nonce
 func (pow *PoW) Init(nonce int) []byte {
-	// Join the block data, previous hash, nonce, and difficulty into a single byte array
-	data := bytes.Join([][]byte{
-		pow.Block.Data,          // Block data
-		pow.Block.PrevHash,      // Hash of the previous block
-		ToBytes(int64(nonce)),   // Nonce converted to bytes
-		ToBytes(int64(Difficulty)) // Difficulty converted to bytes
-		},
-		[]byte{}
-	)
+    // Convert the slice of Transactions to a JSON byte slice
+    transactionsBytes, err := json.Marshal(pow.Block.Transactions)
+    if err != nil {
+        log.Fatal(err)  // or handle the error as you see fit
+    }
 
-	return data
+    data := bytes.Join([][]byte{
+        transactionsBytes,           // Now a []byte
+        pow.Block.PrevHash,
+        ToBytes(int64(nonce)),
+        ToBytes(int64(Difficulty)),
+    }, []byte{})
+
+    return data
 }
 
 // getHash performs the proof-of-work algorithm to find a valid hash

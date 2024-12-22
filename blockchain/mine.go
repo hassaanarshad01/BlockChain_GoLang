@@ -1,14 +1,13 @@
 package blockchain
 
 import (
-	"bytes"
 	"fmt"
 )
 
-//========================Represents a mining node========================
+// ========================Represents a mining node========================
 type Miner struct{}
 
-//========================Mines a block by verifying all transactions and performing proof-of-work========================
+// ========================Mines a block by verifying all transactions and performing proof-of-work========================
 func (m *Miner) Mine(transactions []Transaction, prevhash []byte) *Block {
 
 	// Verify each transaction
