@@ -4,9 +4,11 @@ import (
 	"bufio"
 	"fmt"
 	"net"
-	"os"
 )
 
+// ========================Peer-to-Peer Communication========================
+
+// ConnectToPeer establishes a connection with a peer, sends a message, and listens for responses
 func ConnectToPeer(peerAddress string, messageType string, data interface{}) {
 	conn, err := net.Dial("tcp", peerAddress)
 	if err != nil {
@@ -15,14 +17,17 @@ func ConnectToPeer(peerAddress string, messageType string, data interface{}) {
 	}
 	defer conn.Close()
 
-	// Serialize and send the message
 	message := Message{Type: messageType, Data: data}
+
+	// Serialize the message into JSON
 	messageJSON, err := SerializeMessage(message)
 	if err != nil {
 		fmt.Println("Error serializing message:", err)
 		return
 	}
-	fmt.Fprintf(conn, messageJSON+"\n")
+
+	// Send the serialized message to the peer
+	fmt.Fprintf(conn, "%s\n", messageJSON)
 
 	// Listen for responses from the peer
 	reader := bufio.NewReader(conn)
@@ -33,11 +38,14 @@ func ConnectToPeer(peerAddress string, messageType string, data interface{}) {
 			break
 		}
 
+		// Deserialize the response JSON
 		response, err := DeserializeMessage(responseJSON)
 		if err != nil {
 			fmt.Println("Error parsing response:", err)
 			continue
 		}
+
+		// Log the response from the peer
 		fmt.Println("Response from peer:", response)
 	}
 }

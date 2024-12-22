@@ -1,13 +1,19 @@
 package p2p
 
 import (
+	"fmt"
+	"math/rand"
+	"net"
 	"sync"
+	"time"
 )
 
-var peers []string
-var mu sync.Mutex
+// ========================Peer Management========================
 
-//adding a peer if not added before
+var peers []string // List of connected peers
+var mu sync.Mutex  // Mutex for thread-safe access to the peers list
+
+// AddPeer adds a new peer to the list if it's not already present
 func AddPeer(peerAddress string) {
 	mu.Lock()
 	defer mu.Unlock()
@@ -20,7 +26,7 @@ func AddPeer(peerAddress string) {
 	peers = append(peers, peerAddress)
 }
 
-//returns copy of list of peers connected
+// GetPeers returns a copy of the list of connected peers
 func GetPeers() []string {
 	mu.Lock()
 	defer mu.Unlock()
@@ -30,7 +36,9 @@ func GetPeers() []string {
 	return copyPeers
 }
 
-//broadcasting code changed into JSON communication
+// ========================Message Broadcasting========================
+
+// BroadcastMessage sends a message of the specified type and data to all connected peers
 func BroadcastMessage(messageType string, data interface{}) {
 	mu.Lock()
 	defer mu.Unlock()
@@ -51,8 +59,42 @@ func BroadcastMessage(messageType string, data interface{}) {
 			}
 			defer conn.Close()
 
-			fmt.Fprintf(conn, messageJSON+"\n")
+			fmt.Fprintf(conn, "%s\n", messageJSON)
 		}(peer)
 	}
 }
 
+// ========================Message Sending========================
+
+// SendDataHashToRandomPeer selects a random peer and sends the provided data hash
+func SendDataHashToRandomPeer(dataHash string) {
+	mu.Lock()
+	defer mu.Unlock()
+
+	if len(peers) == 0 {
+		fmt.Println("No peers available to send data hash.")
+		return
+	}
+
+	// Select a random peer
+	rand.Seed(time.Now().UnixNano())
+	randomPeer := peers[rand.Intn(len(peers))]
+
+	// Send the data hash to the random peer
+	go func(peer string) {
+		message := Message{Type: "DATA_HASH", Data: dataHash}
+		messageJSON, err := SerializeMessage(message)
+		if err != nil {
+			fmt.Println("Error serializing message:", err)
+			return
+		}
+		conn, err := net.Dial("tcp", peer)
+		if err != nil {
+			fmt.Println("Error connecting to peer:", err)
+			return
+		}
+		defer conn.Close()
+
+		fmt.Fprintf(conn, "%s\n", messageJSON)
+	}(randomPeer)
+}
