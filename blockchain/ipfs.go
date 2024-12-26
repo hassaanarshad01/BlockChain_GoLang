@@ -1,7 +1,9 @@
-package blockchain
+package main
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -83,6 +85,19 @@ func installRequirements(requirementsFile string) error {
 	return nil
 }
 
+func hashOutput(output AlgorithmResult) (string, error) {
+    // Marshal JSON with sorted keys to ensure consistency
+    outputBytes, err := json.Marshal(output)
+    if err != nil {
+        return "", fmt.Errorf("error marshaling output for hashing: %w", err)
+    }
+    // Log the JSON being hashed
+    fmt.Printf("Hashing Output (Canonical JSON): %s\n", string(outputBytes))
+    hash := sha256.Sum256(outputBytes)
+    return hex.EncodeToString(hash[:]), nil
+}
+
+
 // Function to initialize and process a random dataset
 func initializeAndProcess(datasetCIDs map[string]string, algorithmCID string, requirementsCID string) (AlgorithmResult, error) {
 	fmt.Println("Selecting a random dataset...")
@@ -157,6 +172,87 @@ func initializeAndProcess(datasetCIDs map[string]string, algorithmCID string, re
 	return result, nil
 }
 
+func verifyTransaction(hash string, datasetCID, algorithmCID, requirementsCID string) (bool, error) {
+    fmt.Println("Verifying transaction...")
+
+    // Download dataset
+    fmt.Printf("Downloading dataset (CID: %s)...\n", datasetCID)
+    datasetData, err := downloadFile(datasetCID)
+    if err != nil {
+        return false, fmt.Errorf("error downloading dataset: %w", err)
+    }
+    err = writeFile("dataset.csv", datasetData)
+    if err != nil {
+        return false, fmt.Errorf("error saving dataset: %w", err)
+    }
+
+    // Download algorithm
+    fmt.Printf("Downloading algorithm (CID: %s)...\n", algorithmCID)
+    algorithmData, err := downloadFile(algorithmCID)
+    if err != nil {
+        return false, fmt.Errorf("error downloading algorithm: %w", err)
+    }
+    err = writeFile("algorithm.py", algorithmData)
+    if err != nil {
+        return false, fmt.Errorf("error saving algorithm: %w", err)
+    }
+
+    // Download requirements
+    fmt.Printf("Downloading requirements (CID: %s)...\n", requirementsCID)
+    requirementsData, err := downloadFile(requirementsCID)
+    if err != nil {
+        return false, fmt.Errorf("error downloading requirements: %w", err)
+    }
+    err = writeFile("requirements.txt", requirementsData)
+    if err != nil {
+        return false, fmt.Errorf("error saving requirements: %w", err)
+    }
+
+    // Install requirements
+    fmt.Println("Installing Python requirements...")
+    err = installRequirements("requirements.txt")
+    if err != nil {
+        return false, fmt.Errorf("error installing requirements: %w", err)
+    }
+
+    // Run the algorithm
+    fmt.Println("Running algorithm...")
+    outputString, err := runPythonAlgorithm("algorithm.py", "dataset.csv")
+    if err != nil {
+        return false, fmt.Errorf("error running Python algorithm: %w", err)
+    }
+
+    fmt.Printf("New Output: %s\n", outputString) // Debug log
+
+    // Parse the new output
+    var newOutput AlgorithmResult
+    err = json.Unmarshal([]byte(outputString), &newOutput.Result)
+    if err != nil {
+        return false, fmt.Errorf("error parsing JSON output: %w", err)
+    }
+
+    // Add dataset and algorithm CIDs to the new result
+    newOutput.Dataset = datasetCID
+    newOutput.Algorithm = algorithmCID
+
+    // Hash the new output
+    hashedNewOutput, err := hashOutput(newOutput)
+    if err != nil {
+        return false, fmt.Errorf("error hashing new output: %w", err)
+    }
+
+    fmt.Printf("New Hash: %s\n", hashedNewOutput) // Debug log
+
+    // Compare hashes
+    if hashedNewOutput == hash {
+        fmt.Println("Transaction verified successfully.")
+        return true, nil
+    }
+
+    fmt.Println("Transaction verification failed.")
+    return false, nil
+}
+
 // Main function
 func main() {
 	datasetCIDs := map[string]string{
@@ -178,4 +274,22 @@ func main() {
 	fmt.Println("Final Algorithm Result:")
 	output, _ := json.MarshalIndent(result, "", "  ")
 	fmt.Println(string(output))
+    // Generate the hash of the output
+    hash, err := hashOutput(result)
+    if err != nil {
+        fmt.Println("Error hashing output:", err)
+        return
+    }
+
+    fmt.Printf("Generated Hash: %s\n", hash)
+
+    // Verify the transaction using the hash
+    verified, err := verifyTransaction(hash, result.Dataset, result.Algorithm, requirementsCID)
+    if err != nil {
+        fmt.Println("Verification Error:", err)
+    } else if verified {
+        fmt.Println("Verification Successful.")
+    } else {
+        fmt.Println("Verification Failed.")
+    }
 }
