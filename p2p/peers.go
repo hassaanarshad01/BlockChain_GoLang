@@ -1,6 +1,8 @@
 package p2p
 
 import (
+	"BlockchainProject/blockchain"
+	"encoding/json"
 	"fmt"
 	"math/rand"
 	"net"
@@ -39,20 +41,26 @@ func GetPeers() []string {
 // ========================Message Broadcasting========================
 
 // BroadcastMessage sends a message of the specified type and data to all connected peers
-func BroadcastMessage(messageType string, data interface{}) {
+func BroadcastMessage(message Message, senderPeer string) {
 	mu.Lock()
 	defer mu.Unlock()
 
-	message := Message{Type: messageType, Data: data}
 	messageJSON, err := SerializeMessage(message)
 	if err != nil {
 		fmt.Println("Error serializing message:", err)
 		return
 	}
 
+	println(senderPeer)
+
 	for _, peer := range peers {
+		if peer == senderPeer {
+			continue // Skip the sender peer
+		}
+		println(peer)
 		go func(peer string) {
-			conn, err := net.Dial("tcp", peer)
+			address := fmt.Sprintf("%s:8080", peer) //Sending over port 8080 (port 8080 will be used as a transaction message sending port)
+			conn, err := net.Dial("tcp", address)
 			if err != nil {
 				fmt.Println("Error connecting to peer:", err)
 				return
@@ -60,6 +68,39 @@ func BroadcastMessage(messageType string, data interface{}) {
 			defer conn.Close()
 
 			fmt.Fprintf(conn, "%s\n", messageJSON)
+			println("Propagating message to other peer")
+		}(peer)
+	}
+}
+
+//==========================Block Broadcasting=============================
+
+// BroadcastBlock broadcasts a block to all connected peers except the sender peer
+func BroadcastBlock(block *blockchain.Block, senderPeer string) {
+	mu.Lock()
+	defer mu.Unlock()
+
+	blockJSON, err := json.Marshal(block)
+	if err != nil {
+		fmt.Println("Error serializing block:", err)
+		return
+	}
+
+	for _, peer := range peers {
+		if peer == senderPeer {
+			continue // Skip the sender peer
+		}
+
+		go func(peer string) {
+			address := fmt.Sprintf("%s:6000", peer) //Sending over port 6000 (port 6000 will be used as a block sending port)
+			conn, err := net.Dial("tcp", address)
+			if err != nil {
+				fmt.Println("Error connecting to peer:", err)
+				return
+			}
+			defer conn.Close()
+
+			fmt.Fprintf(conn, "%s\n", blockJSON)
 		}(peer)
 	}
 }
@@ -67,12 +108,12 @@ func BroadcastMessage(messageType string, data interface{}) {
 // ========================Message Sending========================
 
 // SendDataHashToRandomPeer selects a random peer and sends the provided data hash
-func SendDataHashToRandomPeer(dataHash string) {
+func SendDataHashToRandomPeer(message Message) {
 	mu.Lock()
 	defer mu.Unlock()
 
 	if len(peers) == 0 {
-		fmt.Println("No peers available to send data hash.")
+		fmt.Println("No peers available to send data.")
 		return
 	}
 
@@ -82,13 +123,13 @@ func SendDataHashToRandomPeer(dataHash string) {
 
 	// Send the data hash to the random peer
 	go func(peer string) {
-		message := Message{Type: "DATA_HASH", Data: dataHash}
 		messageJSON, err := SerializeMessage(message)
 		if err != nil {
 			fmt.Println("Error serializing message:", err)
 			return
 		}
-		conn, err := net.Dial("tcp", peer)
+		address := fmt.Sprintf("%s:%d", peer, 8080) //Add port to use along with address
+		conn, err := net.Dial("tcp", address)
 		if err != nil {
 			fmt.Println("Error connecting to peer:", err)
 			return

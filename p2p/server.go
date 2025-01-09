@@ -1,9 +1,10 @@
 package p2p
 
+/*
 import (
+	"BlockchainProject/blockchain" // Import the blockchain package
 	"bufio"
 	"fmt"
-	"local/blockchain-dump/blockchain" // Import the blockchain package
 	"net"
 	"os"
 )
@@ -12,6 +13,7 @@ import (
 
 // Declare a global blockchain instance
 var chain *blockchain.Blockchain
+var BlockHash string
 
 // ========================Peer-to-Peer Server========================
 
@@ -27,7 +29,7 @@ func StartServer(port string) {
 	fmt.Println("Listening on port", port)
 
 	// Initialize the blockchain instance
-	chain = blockchain.InitBlockchain()
+	chain,BlockHash = blockchain.InitBlockchain()
 
 	for {
 		conn, err := listener.Accept()
@@ -36,14 +38,14 @@ func StartServer(port string) {
 			continue
 		}
 
-		go handleConnection(conn)
+		go HandleConnection(conn)
 	}
 }
 
 // ========================Message Handling========================
 
 // handleConnection processes incoming messages from a peer and performs actions based on the message type
-func handleConnection(conn net.Conn) {
+func HandleConnection(conn net.Conn) {
 	defer conn.Close()
 	reader := bufio.NewReader(conn)
 
@@ -61,11 +63,13 @@ func handleConnection(conn net.Conn) {
 		}
 
 		switch message.Type {
-		case "DATA_HASH":
-			dataHash := message.Data.(string)
+		case "TRANS":
+			/* dataset := message.Dataset.(string)
+			algo := message.Algo.(string)
+			req := message.Requirements.(string)
 
 			// Retrieve data using IPFS
-			data, err := blockchain.SimulateIPFSDownload(dataHash)
+			data, err := blockchain.SimulateIPFSDownload(dataset, algo, req)
 			if err != nil {
 				fmt.Println("Error retrieving data from IPFS:", err)
 				continue
@@ -76,9 +80,9 @@ func handleConnection(conn net.Conn) {
 
 			// Create a transaction and mine a block
 			tx := blockchain.Transaction{
-				DataHash: dataHash,
-				AlgoHash: blockchain.HashData("XOR"),
-				Output:   output,
+				DataHash:   dataset,
+				AlgoHash:   algo,
+				OutputHash: output,
 			}
 
 			// Get the latest block and create a new block
@@ -91,8 +95,9 @@ func handleConnection(conn net.Conn) {
 			fmt.Println("Mined new block with transaction:", tx)
 			BroadcastMessage("NEW_BLOCK", newBlock)
 
-		default:
+ 		default:
 			fmt.Println("Unknown message type:", message.Type)
 		}
 	}
 }
+*/

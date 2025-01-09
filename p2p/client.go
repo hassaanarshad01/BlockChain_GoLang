@@ -9,7 +9,7 @@ import (
 // ========================Peer-to-Peer Communication========================
 
 // ConnectToPeer establishes a connection with a peer, sends a message, and listens for responses
-func ConnectToPeer(peerAddress string, messageType string, data interface{}) {
+func ConnectToPeer(peerAddress string, messageType string, dataset interface{}, algo interface{}, req interface{}) {
 	conn, err := net.Dial("tcp", peerAddress)
 	if err != nil {
 		fmt.Println("Error connecting to peer:", err)
@@ -17,7 +17,7 @@ func ConnectToPeer(peerAddress string, messageType string, data interface{}) {
 	}
 	defer conn.Close()
 
-	message := Message{Type: messageType, Data: data}
+	message := Message{Type: messageType, Dataset: dataset, Algo: algo, Requirements: req}
 
 	// Serialize the message into JSON
 	messageJSON, err := SerializeMessage(message)

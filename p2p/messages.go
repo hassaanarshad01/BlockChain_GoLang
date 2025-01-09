@@ -4,8 +4,10 @@ import "encoding/json"
 
 //structured message
 type Message struct {
-	Type string      `json:"type"` //e.g., "REQUEST_CHAIN", "NEW_BLOCK"
-	Data interface{} `json:"data"` //Data can be a string, map, or a specific struct
+	Type         string      `json:"type"`    //e.g., "REQUEST_CHAIN", "NEW_BLOCK"
+	Dataset      interface{} `json:"dataset"` //CID of dataset to be used with the algorithm
+	Algo         interface{} `json:"algo"`    //CID of algo to be used
+	Requirements interface{} `json:"req"`     //CID requirements file to be installed
 }
 
 //convert to JSON
