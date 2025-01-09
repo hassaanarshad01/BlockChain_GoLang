@@ -1,102 +1,90 @@
 package main
 
 import (
-	"flag"
+	"BlockchainProject/ipfs"
+	"BlockchainProject/p2p"
 	"fmt"
-	"local/blockchain-dump/blockchain"
-	"local/blockchain-dump/p2p"
-	"math/rand"
-	"time"
+	"os"
 )
 
+func TestIPFS() {
+
+	// Mapping of datasets to their IPFS CIDs
+	datasetCIDs := map[string]string{
+		"dataset_1": "bafybeicvy4d3odjmys7shzw4cddp6hw2zuoifnbzkiwn6vdomr3wysjkee",
+		"dataset_2": "bafkreieqc5e3pzaksbsxo573bkeerfry6lm7qbkg44vsrt3sbix5254koy",
+	}
+
+	algorithmCID := "bafkreib22cejsgdjwahqmnpdqfa5hpp6xrpxukeqcqdyn4liazg3i7noku"
+	requirementsCID := "bafkreigep2i5w2hw5ek4ufubj4ypdzvyzdhzco3wfpj4b25tjwlclgg5bu"
+
+	// Step 1: Process the datasets and algorithm
+	fmt.Println("Starting processing...")
+	dataset := p2p.SelectRandomDatasetCID(datasetCIDs)
+	result, err := ipfs.InitializeAndProcess(dataset, algorithmCID, requirementsCID)
+	if err != nil {
+		fmt.Printf("Error during initialization and processing: %v\n", err)
+		return
+	}
+
+	// Step 2: Generate the hash for the output
+	fmt.Println("Hashing the result...")
+	hash, err := ipfs.HashOutput(result)
+	if err != nil {
+		fmt.Printf("Error hashing the output: %v\n", err)
+		return
+	}
+
+	// Step 3: Verify the transaction
+	fmt.Println("Starting verification...")
+	isVerified, err := ipfs.VerifyTransaction(hash, result.Dataset, result.Algorithm, requirementsCID)
+	if err != nil {
+		fmt.Printf("Error verifying the transaction: %v\n", err)
+		return
+	}
+
+	if isVerified {
+		fmt.Println("Transaction verified successfully.")
+	} else {
+		fmt.Println("Transaction verification failed.")
+	}
+}
+
+func TestComms() {
+
+	// Add some peers to the list
+	p2p.AddPeer("localhost")
+	//p2p.AddPeer("192.168.1.101")
+	//p2p.AddPeer("192.168.1.102")
+	//p2p.AddPeer("192.168.1.103")
+
+	go p2p.Miner()
+
+	p2p.InitMessage()
+}
+
+// Main function to demonstrate the process
 func main() {
-	// Initialize IPFS
-	if !initializeIPFS("http://localhost:5001") {
+
+	//Testing of IPFS related functionalities
+	//TestIPFS()
+
+	//Testing Communication
+	//TestComms()
+
+	if len(os.Args) != 2 {
+		fmt.Println("Usage:", os.Args[0], "Gen/MINER")
 		return
 	}
 
-	// Add predefined data to IPFS
-	hashes := addPredefinedDataToIPFS([]string{"Option1", "Option2", "Option3"})
-	if hashes == nil {
-		return
+	role := os.Args[1]
+	switch role {
+	case "Gen":
+		p2p.InitMessage()
+	case "MINER":
+		go p2p.Miner()
+	default:
+		fmt.Println("Invalid role. Please use Gen or MINER.")
 	}
 
-	// Parse command-line arguments
-	port, peer := parseFlags()
-
-	// Start the P2P server
-	go p2p.StartServer(port)
-
-	// Connect to an initial peer if provided
-	if peer != "" {
-		connectToInitialPeer(peer)
-	}
-
-	// Regularly check peer health
-	go p2p.CheckPeerHealth()
-
-	// Initialize the blockchain
-	chain := blockchain.InitBlockchain()
-
-	// Trigger deterministic algorithm on random data
-	go triggerAlgorithm([]string{"Option1", "Option2", "Option3"})
-
-	// Main application log
-	fmt.Println("Genesis block initialized:", chain.Blocks[0])
-	fmt.Println("Blockchain initialized. Listening on port:", port)
-
-	// Prevent main from exiting
-	select {}
-}
-
-// ========================Initialization Functions========================
-
-// initializeIPFS connects to the IPFS client
-func initializeIPFS(nodeAddress string) bool {
-	err := blockchain.InitializeIPFSClient(nodeAddress)
-	if err != nil {
-		fmt.Println("Failed to connect to IPFS:", err)
-		return false
-	}
-	fmt.Println("IPFS client initialized successfully.")
-	return true
-}
-
-// addPredefinedDataToIPFS adds data items to IPFS and returns their hashes
-func addPredefinedDataToIPFS(dataItems []string) map[string]string {
-	hashes, err := blockchain.AddPredefinedDataToIPFS(dataItems)
-	if err != nil {
-		fmt.Println("Error adding predefined data to IPFS:", err)
-		return nil
-	}
-
-	for data, hash := range hashes {
-		fmt.Printf("Data: %s, Hash: %s\n", data, hash)
-	}
-
-	return hashes
-}
-
-// parseFlags parses command-line arguments for the port and peer
-func parseFlags() (string, string) {
-	port := flag.String("port", "3001", "Port to listen on")
-	peer := flag.String("peer", "", "Address of a peer to connect to")
-	flag.Parse()
-	return *port, *peer
-}
-
-// connectToInitialPeer connects to the specified peer
-func connectToInitialPeer(peer string) {
-	p2p.ConnectToPeer(peer, "REQUEST_CHAIN", nil)
-	p2p.AddPeer(peer)
-}
-
-// ========================Application Logic========================
-
-// triggerAlgorithm selects random data, computes its hash, and sends it to a random peer
-func triggerAlgorithm(dataOptions []string) {
-	rand.Seed(time.Now().UnixNano())
-	data := dataOptions[rand.Intn(len(dataOptions))]
-	dataHash := blockchain.HashData(data)
-	p2p.SendDataHashToRandomPeer(dataHash)
 }

@@ -1,0 +1,83 @@
+version: '3'
+
+networks:
+  blockchain-net:
+    driver: bridge
+
+services:
+  generator:
+    build:
+      dockerfile: Dockerfile-Generator
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./ipfs:/app/ipfs
+      - ./blockchain:/app/blockchain
+      - ./p2p:/app/p2p
+    networks:
+      - blockchain-net
+
+  miner1:
+    build:
+      dockerfile: Dockerfile-Miner
+    ports:
+      - "8081:8080"
+      - "6001:6000"
+    volumes:
+      - ./ipfs:/app/ipfs
+      - ./blockchain:/app/blockchain
+      - ./p2p:/app/p2p
+    networks:
+      - blockchain-net
+
+  miner2:
+    build:
+      dockerfile: Dockerfile-Miner
+    ports:
+      - "8082:8080"
+      - "6002:6000"
+    volumes:
+      - ./ipfs:/app/ipfs
+      - ./blockchain:/app/blockchain
+      - ./p2p:/app/p2p
+    networks:
+      - blockchain-net
+
+  miner3:
+    build:
+      dockerfile: Dockerfile-Miner
+    ports:
+      - "8083:8080"
+      - "6003:6000"
+    volumes:
+      - ./ipfs:/app/ipfs
+      - ./blockchain:/app/blockchain
+      - ./p2p:/app/p2p
+    networks:
+      - blockchain-net
+
+  miner4:
+    build:
+      dockerfile: Dockerfile-Miner
+    ports:
+      - "8084:8080"
+      - "6004:6000"
+    volumes:
+      - ./ipfs:/app/ipfs
+      - ./blockchain:/app/blockchain
+      - ./p2p:/app/p2p
+    networks:
+      - blockchain-net
+
+  miner5:
+    build:
+      dockerfile: Dockerfile-Miner
+    ports:
+      - "8085:8080"
+      - "6005:6000"
+    volumes:
+      - ./ipfs:/app/ipfs
+      - ./blockchain:/app/blockchain
+      - ./p2p:/app/p2p
+    networks:
+      - blockchain-net
