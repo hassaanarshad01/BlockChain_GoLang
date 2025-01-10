@@ -1,37 +1,34 @@
 package blockchain
 
 import (
-    "bytes"
-    "crypto/sha256"
-    "encoding/binary"
-    "fmt"
-    "log"
-    "math"
-    "math/big"
+	"bytes"
+	"crypto/sha256"
+	"encoding/binary"
+	"encoding/hex"
 	"encoding/json"
+	"log"
+	"math"
+	"math/big"
 )
 
-// PoW represents the Proof-of-Work structure
+// ========================Proof of Work========================
 type PoW struct {
-	Block  *Block   // The block for which proof-of-work is being calculated
-	target *big.Int // The target value for the proof-of-work difficulty
+	Block  *Block
+	target *big.Int
 }
 
-// Sets the number of leading zeros required in the hash (higher = more difficult)
-const Difficulty = 14
-
-// NewProof initializes a new PoW instance for a given block
+// ========================Creates a new proof-of-work instance========================
 func NewProof(b *Block) *PoW {
-	// Create a big integer with value 1
+	// Create a target value for the proof-of-work difficulty
 	target := big.NewInt(1)
-	// Shift left by (256 - Difficulty) bits to set the difficulty target
-	target.Lsh(target, uint(256-Difficulty))
+	target.Lsh(target, uint(256-14))
+
 	// Create and return a PoW instance
 	pow := &PoW{b, target}
 	return pow
 }
 
-// ToBytes converts an int64 number into a byte array
+// ========================Converts an int64 number into a byte array========================
 func ToBytes(num int64) []byte {
 	// Create a buffer to hold the bytes
 	var buff = new(bytes.Buffer)
@@ -39,7 +36,7 @@ func ToBytes(num int64) []byte {
 	// Write the integer to the buffer in BigEndian format
 	err := binary.Write(buff, binary.BigEndian, num)
 
-	//Error handling
+	// Error handling
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -48,40 +45,41 @@ func ToBytes(num int64) []byte {
 	return buff.Bytes()
 }
 
-// Init prepares the data to be hashed with the given nonce
+// ========================Prepares the data to be hashed with the given nonce========================
 func (pow *PoW) Init(nonce int) []byte {
-    // Convert the slice of Transactions to a JSON byte slice
-    transactionsBytes, err := json.Marshal(pow.Block.Transactions)
-    if err != nil {
-        log.Fatal(err)  // or handle the error as you see fit
-    }
+	// Convert the slice of Transactions to a JSON byte slice
+	transactionsBytes, err := json.Marshal(pow.Block.Transactions)
+	if err != nil {
+		log.Fatal(err) // or handle the error as you see fit
+	}
 
-    data := bytes.Join([][]byte{
-        transactionsBytes,           // Now a []byte
-        pow.Block.PrevHash,
-        ToBytes(int64(nonce)),
-        ToBytes(int64(Difficulty)),
-    }, []byte{})
+	data := bytes.Join([][]byte{
+		transactionsBytes, // Now a []byte
+		[]byte(pow.Block.PrevHash),
+		ToBytes(int64(nonce)),
+		ToBytes(int64(14)),
+	}, []byte{})
 
-    return data
+	return data
 }
 
-// getHash performs the proof-of-work algorithm to find a valid hash
-func (pow *PoW) getHash() (int, []byte) {
+// ========================Performs the proof-of-work algorithm to find a valid hash========================
+func (pow *PoW) GetHash() (int, string) {
 	var initHash big.Int // Used to hold the hash as a big integer for comparison
-	var hash [32]byte    // The final hash result
+	var hash string      // The final hash result
 	var nonce = 0        // Start with nonce 0
 
 	// Loop to find a valid hash
 	for nonce < math.MaxInt64 {
 		// Prepare the data with the current nonce
 		data := pow.Init(nonce)
+
 		// Compute the SHA-256 hash of the data
-		hash = sha256.Sum256(data)
-		// Print the hash in hexadecimal format for debugging
-		fmt.Printf("%x", hash)
+		hashBytes := sha256.Sum256(data)
+		hash = hex.EncodeToString(hashBytes[:])
+
 		// Convert the hash to a big integer
-		initHash.SetBytes(hash[:])
+		initHash.SetBytes(hashBytes[:])
 
 		// Check if the hash is less than the target (valid PoW)
 		if initHash.Cmp(pow.target) == -1 {
@@ -91,8 +89,6 @@ func (pow *PoW) getHash() (int, []byte) {
 		}
 	}
 
-	fmt.Println()
-
 	// Return the valid nonce and the corresponding hash
-	return nonce, hash[:]
+	return nonce, hash
 }
